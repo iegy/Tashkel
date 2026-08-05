@@ -1,0 +1,15 @@
+# Backend requirements
+fastapi==0.95.2
+uvicorn[standard]==0.22.0
+pydantic==1.10.12
+symspellpy==6.7.0
+python-multipart==0.0.6
+aiohttp==3.8.4
+requests==2.31.0
+# Optional (for HF model inference)
+transformers>=4.30.0
+torch>=2.0.0
+sentencepiece
+
+# For development
+python-dotenv

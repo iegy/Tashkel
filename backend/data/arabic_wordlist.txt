@@ -1,0 +1,14 @@
+# tiny sample wordlist (expand with real dataset for accuracy)
+السلام
+عليكم
+مرحبا
+مثال
+كتاب
+عربي
+لغة
+تشكيل
+تصحيح
+مدرسة
+جامعة
+طالب
+مدرس

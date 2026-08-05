@@ -1,0 +1,15 @@
+# Git ignore
+__pycache__/
+venv/
+.env
+*.pyc
+*.pyo
+*.pyd
+.Python
+build/
+dist/
+node_modules/
+frontend/dist/
+
+# model caches
+~/.cache/huggingface/
