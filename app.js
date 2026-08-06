@@ -28,10 +28,24 @@
     suggestClose: $("suggestClose"),
     copyBtn: $("copyBtn"),
     downloadBtn: $("downloadBtn"),
+    speakBtn: $("speakBtn"),
     fontMinus: $("fontMinus"),
     fontPlus: $("fontPlus"),
     dictBanner: $("dictBanner"),
     dictBannerText: $("dictBannerText"),
+    historyBtn: $("historyBtn"),
+    historyPanel: $("historyPanel"),
+    historyList: $("historyList"),
+    historyClose: $("historyClose"),
+    historyClearBtn: $("historyClearBtn"),
+    spellOptions: $("spellOptions"),
+    personalDictBtn: $("personalDictBtn"),
+    personalDictCount: $("personalDictCount"),
+    personalDictPanel: $("personalDictPanel"),
+    personalDictList: $("personalDictList"),
+    personalDictClose: $("personalDictClose"),
+    personalDictClearBtn: $("personalDictClearBtn"),
+    ignoreWordBtn: $("ignoreWordBtn"),
   };
 
   /* ============================================================
@@ -81,9 +95,11 @@
     els.modeTashkeelBtn.setAttribute("aria-selected", String(isTashkeel));
     els.modeSpellBtn.setAttribute("aria-selected", String(!isTashkeel));
     els.tashkeelOptions.style.display = isTashkeel ? "" : "none";
+    els.spellOptions.hidden = isTashkeel;
     els.runBtnLabel.textContent = isTashkeel ? "✨ شكّل النص" : "✓ صحّح الإملاء";
     els.outputLabel.textContent = isTashkeel ? "النص مشكّلاً" : "نتيجة التدقيق";
     hideSuggestPop();
+    hidePanels();
     updateRunButtonAvailability();
   }
   els.modeTashkeelBtn.addEventListener("click", () => setMode("tashkeel"));
@@ -97,6 +113,8 @@
     tashkeelReady: false,
     spell: null,
     spellReady: false,
+    personalDict: new Set(),
+    history: [],
   };
 
   function updateDictBanner() {
@@ -302,6 +320,7 @@
 
   function isArabicWordValid(bare) {
     if (bare.length < 2) return true; // single letters: not worth flagging
+    if (state.personalDict.has(bare)) return true;
     if (state.spell.correct(bare)) return true;
 
     const candidates = new Set();
@@ -366,12 +385,15 @@
   }
 
   /* ---- suggestion popover ---- */
+  let currentSuggest = null; // { entry, span, idx }
+
   function showSuggestPop(span) {
     const idx = Number(span.dataset.idx);
     const entry = misspelledRegistry[idx];
     if (!entry) return;
     document.querySelectorAll(".misspelled.is-open").forEach((s) => s.classList.remove("is-open"));
     span.classList.add("is-open");
+    currentSuggest = { entry, span, idx };
     els.suggestWord.textContent = span.textContent;
     els.suggestChips.innerHTML = "";
 
@@ -423,8 +445,22 @@
   function hideSuggestPop() {
     els.suggestPop.hidden = true;
     document.querySelectorAll(".misspelled.is-open").forEach((s) => s.classList.remove("is-open"));
+    currentSuggest = null;
   }
   els.suggestClose.addEventListener("click", hideSuggestPop);
+
+  els.ignoreWordBtn.addEventListener("click", () => {
+    if (!currentSuggest) return;
+    const { entry } = currentSuggest;
+    addToPersonalDict(entry.bare);
+    // un-flag every occurrence of this word already shown in the result
+    document.querySelectorAll(".misspelled").forEach((s) => {
+      if (stripDiacritics(s.textContent) === entry.bare) {
+        s.classList.remove("misspelled", "is-open");
+      }
+    });
+    hideSuggestPop();
+  });
 
   els.resultBox.addEventListener("click", (e) => {
     const span = e.target.closest(".misspelled");
@@ -502,7 +538,10 @@
 
   els.downloadBtn.addEventListener("click", () => {
     const text = els.resultBox.innerText;
-    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+    // Prepend a UTF-8 BOM: some Android/Windows text viewers guess the
+    // encoding from raw bytes when there's no BOM, and misdetect Arabic
+    // UTF-8 as a legacy codepage, turning it into garbled symbols.
+    const blob = new Blob(["\uFEFF" + text], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -512,6 +551,224 @@
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   });
+
+  /* ============================================================
+     10b) Text-to-speech
+     ============================================================ */
+  if ("speechSynthesis" in window && typeof window.SpeechSynthesisUtterance === "function") {
+    els.speakBtn.hidden = false;
+    let speaking = false;
+    let arabicVoice = null;
+
+    function pickArabicVoice() {
+      const voices = window.speechSynthesis.getVoices() || [];
+      arabicVoice = voices.find((v) => /^ar/i.test(v.lang)) || null;
+    }
+    pickArabicVoice();
+    if (typeof window.speechSynthesis.addEventListener === "function") {
+      window.speechSynthesis.addEventListener("voiceschanged", pickArabicVoice);
+    }
+
+    function stopSpeaking() {
+      window.speechSynthesis.cancel();
+      speaking = false;
+      els.speakBtn.textContent = "🔊 نطق";
+    }
+
+    els.speakBtn.addEventListener("click", () => {
+      if (speaking) {
+        stopSpeaking();
+        return;
+      }
+      const text = els.resultBox.innerText.trim();
+      if (!text) return;
+      const utter = new SpeechSynthesisUtterance(text);
+      utter.lang = arabicVoice ? arabicVoice.lang : "ar-SA";
+      if (arabicVoice) utter.voice = arabicVoice;
+      utter.rate = 0.95;
+      utter.onend = stopSpeaking;
+      utter.onerror = stopSpeaking;
+      window.speechSynthesis.cancel(); // stop anything queued
+      window.speechSynthesis.speak(utter);
+      speaking = true;
+      els.speakBtn.textContent = "⏹ إيقاف";
+    });
+  }
+
+  /* ============================================================
+     10c) Personal dictionary (ignored words)
+     ============================================================ */
+  function loadPersonalDict() {
+    try {
+      const raw = JSON.parse(localStorage.getItem("arabimo_personal_dict") || "[]");
+      state.personalDict = new Set(raw);
+    } catch (e) {
+      state.personalDict = new Set();
+    }
+    updatePersonalDictCount();
+  }
+  function savePersonalDict() {
+    localStorage.setItem("arabimo_personal_dict", JSON.stringify([...state.personalDict]));
+    updatePersonalDictCount();
+  }
+  function addToPersonalDict(word) {
+    state.personalDict.add(word);
+    savePersonalDict();
+  }
+  function removeFromPersonalDict(word) {
+    state.personalDict.delete(word);
+    savePersonalDict();
+    renderPersonalDictPanel();
+  }
+  function updatePersonalDictCount() {
+    els.personalDictCount.textContent = state.personalDict.size.toLocaleString("ar-EG");
+  }
+  function renderPersonalDictPanel() {
+    els.personalDictList.innerHTML = "";
+    if (state.personalDict.size === 0) {
+      els.personalDictList.innerHTML = '<div class="panel-empty">لا توجد كلمات متجاهَلة بعد. اضغط "تجاهل الكلمة" عند تصحيح الإملاء لإضافة كلمة هنا.</div>';
+      return;
+    }
+    [...state.personalDict].forEach((word) => {
+      const row = document.createElement("div");
+      row.className = "panel-item";
+      const span = document.createElement("span");
+      span.className = "panel-item-text";
+      span.textContent = word;
+      const removeBtn = document.createElement("button");
+      removeBtn.type = "button";
+      removeBtn.className = "panel-item-remove";
+      removeBtn.setAttribute("aria-label", "إزالة من القاموس الشخصي");
+      removeBtn.textContent = "✕";
+      removeBtn.addEventListener("click", () => removeFromPersonalDict(word));
+      row.appendChild(span);
+      row.appendChild(removeBtn);
+      els.personalDictList.appendChild(row);
+    });
+  }
+  els.personalDictBtn.addEventListener("click", () => {
+    renderPersonalDictPanel();
+    els.personalDictPanel.hidden = !els.personalDictPanel.hidden;
+    els.historyPanel.hidden = true;
+  });
+  els.personalDictClose.addEventListener("click", () => { els.personalDictPanel.hidden = true; });
+  els.personalDictClearBtn.addEventListener("click", () => {
+    if (state.personalDict.size === 0) return;
+    if (!confirm("مسح كل الكلمات من القاموس الشخصي؟")) return;
+    state.personalDict.clear();
+    savePersonalDict();
+    renderPersonalDictPanel();
+  });
+  loadPersonalDict();
+
+  /* ============================================================
+     10d) Recent texts (local history)
+     ============================================================ */
+  const HISTORY_KEY = "arabimo_history";
+  const HISTORY_MAX = 5;
+
+  function loadHistory() {
+    try {
+      state.history = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
+    } catch (e) {
+      state.history = [];
+    }
+  }
+  function saveHistoryEntry(text) {
+    text = text.trim();
+    if (!text) return;
+    if (state.history[0] && state.history[0].text === text) return; // no-op dup
+    state.history = state.history.filter((h) => h.text !== text);
+    state.history.unshift({ text, ts: Date.now() });
+    state.history = state.history.slice(0, HISTORY_MAX);
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(state.history));
+  }
+  function removeHistoryEntry(ts) {
+    state.history = state.history.filter((h) => h.ts !== ts);
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(state.history));
+    renderHistoryPanel();
+  }
+  function relativeTime(ts) {
+    const diffMin = Math.round((Date.now() - ts) / 60000);
+    if (diffMin < 1) return "الآن";
+    if (diffMin < 60) return `منذ ${diffMin.toLocaleString("ar-EG")} د`;
+    const diffH = Math.round(diffMin / 60);
+    if (diffH < 24) return `منذ ${diffH.toLocaleString("ar-EG")} س`;
+    const diffD = Math.round(diffH / 24);
+    return `منذ ${diffD.toLocaleString("ar-EG")} يوم`;
+  }
+  function renderHistoryPanel() {
+    els.historyList.innerHTML = "";
+    if (state.history.length === 0) {
+      els.historyList.innerHTML = '<div class="panel-empty">لا توجد نصوص محفوظة بعد. بمجرد ما تكتب، هيتحفظ آخر ٥ نصوص هنا تلقائيًا.</div>';
+      return;
+    }
+    state.history.forEach((h) => {
+      const row = document.createElement("div");
+      row.className = "panel-item";
+      const span = document.createElement("span");
+      span.className = "panel-item-text";
+      span.title = "اضغط لاستخدام هذا النص";
+      const preview = h.text.length > 40 ? h.text.slice(0, 40) + "…" : h.text;
+      span.textContent = `${preview}  —  ${relativeTime(h.ts)}`;
+      span.addEventListener("click", () => {
+        els.inputText.value = h.text;
+        updateCounter();
+        els.historyPanel.hidden = true;
+        els.inputText.focus();
+      });
+      const removeBtn = document.createElement("button");
+      removeBtn.type = "button";
+      removeBtn.className = "panel-item-remove";
+      removeBtn.setAttribute("aria-label", "حذف هذا النص");
+      removeBtn.textContent = "✕";
+      removeBtn.addEventListener("click", () => removeHistoryEntry(h.ts));
+      row.appendChild(span);
+      row.appendChild(removeBtn);
+      els.historyList.appendChild(row);
+    });
+  }
+  els.historyBtn.addEventListener("click", () => {
+    renderHistoryPanel();
+    els.historyPanel.hidden = !els.historyPanel.hidden;
+    els.personalDictPanel.hidden = true;
+  });
+  els.historyClose.addEventListener("click", () => { els.historyPanel.hidden = true; });
+  els.historyClearBtn.addEventListener("click", () => {
+    if (state.history.length === 0) return;
+    if (!confirm("مسح كل النصوص المحفوظة؟")) return;
+    state.history = [];
+    localStorage.removeItem(HISTORY_KEY);
+    renderHistoryPanel();
+  });
+  loadHistory();
+
+  // debounced auto-save while typing, so work is never lost
+  let historySaveTimer = null;
+  els.inputText.addEventListener("input", () => {
+    clearTimeout(historySaveTimer);
+    historySaveTimer = setTimeout(() => saveHistoryEntry(els.inputText.value), 2000);
+  });
+
+  function hidePanels() {
+    els.historyPanel.hidden = true;
+    els.personalDictPanel.hidden = true;
+  }
+
+  /* ============================================================
+     10e) Receive shared text (Android "Share to" target)
+     ============================================================ */
+  function loadSharedTextFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    const shared = params.get("shared_text") || params.get("shared_title") || params.get("shared_url");
+    if (shared) {
+      els.inputText.value = shared;
+      updateCounter();
+      // clean the URL so refreshing doesn't re-fill the box
+      history.replaceState({}, "", window.location.pathname);
+    }
+  }
+  loadSharedTextFromUrl();
 
   /* ============================================================
      11) Service worker (offline support)

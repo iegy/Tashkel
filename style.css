@@ -382,10 +382,60 @@ body{
   cursor:pointer;
 }
 .chip:hover{ background: var(--brass); color:#1C1B2E; }
+.chip-ignore{
+  background: transparent;
+  border-color: var(--border-strong);
+  color: var(--text-muted);
+}
+.chip-ignore:hover{ background: var(--bg); color: var(--text); }
 .suggest-close{
   background:none; border:none; color:var(--text-muted);
   cursor:pointer; font-size:1rem; padding:4px;
 }
+
+/* ===================== Floating panels (history / personal dict) ===================== */
+.panel{
+  margin-top: 12px;
+  background: var(--bg-softer);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  box-shadow: var(--shadow);
+}
+.panel[hidden]{ display:none; }
+.panel-head{
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom:10px;
+}
+.panel-close{
+  background:none; border:none; color:var(--text-muted);
+  cursor:pointer; font-size:1rem; padding:4px;
+}
+.panel-list{
+  display:flex; flex-direction:column; gap:8px;
+  max-height: 260px; overflow-y:auto;
+  margin-bottom: 10px;
+}
+.panel-empty{ color: var(--text-muted); font-size:.88rem; padding: 6px 2px; }
+.panel-item{
+  display:flex; align-items:center; gap:8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+}
+.panel-item-text{
+  flex:1; min-width:0;
+  font-size:.92rem;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  cursor:pointer;
+}
+.panel-item-remove{
+  background:none; border:none; color: var(--vermillion);
+  cursor:pointer; font-size:.95rem; padding:2px 6px; flex:none;
+}
+.panel-clear{ width:100%; font-size:.85rem; }
+.btn-small{ padding: 9px 12px; font-size:.85rem; }
 
 /* ===================== Dictionary loading banner ===================== */
 .dict-banner{

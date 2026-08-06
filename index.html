@@ -56,10 +56,21 @@
     <div class="input-actions">
       <button class="btn btn-ghost" id="pasteBtn" type="button">لصق</button>
       <button class="btn btn-ghost" id="clearBtn" type="button">مسح</button>
+      <button class="btn btn-ghost" id="historyBtn" type="button">الأخيرة</button>
       <div class="spacer"></div>
       <button class="btn btn-primary" id="runBtn" type="button">
         <span id="runBtnLabel">✨ شكّل النص</span>
       </button>
+    </div>
+
+    <!-- recent texts panel -->
+    <div class="panel" id="historyPanel" hidden>
+      <div class="panel-head">
+        <span class="card-label">آخر النصوص المحفوظة على جهازك</span>
+        <button class="panel-close" id="historyClose" type="button" aria-label="إغلاق">✕</button>
+      </div>
+      <div class="panel-list" id="historyList"></div>
+      <button class="btn btn-ghost panel-clear" id="historyClearBtn" type="button">مسح الكل</button>
     </div>
   </section>
 
@@ -70,6 +81,21 @@
       <span class="switch-track" aria-hidden="true"></span>
       <span class="switch-label">إخفاء حركات الإعراب النهائية (تشكيل أخف وأكثر ثباتًا)</span>
     </label>
+  </div>
+
+  <!-- ===== Options (spellcheck) ===== -->
+  <div class="options-row" id="spellOptions" hidden>
+    <button class="btn btn-ghost btn-small" id="personalDictBtn" type="button">📖 القاموس الشخصي (<span id="personalDictCount">٠</span>)</button>
+  </div>
+
+  <!-- personal dictionary panel -->
+  <div class="panel" id="personalDictPanel" hidden>
+    <div class="panel-head">
+      <span class="card-label">الكلمات المتجاهَلة (لن تُعتبر أخطاء بعد الآن)</span>
+      <button class="panel-close" id="personalDictClose" type="button" aria-label="إغلاق">✕</button>
+    </div>
+    <div class="panel-list" id="personalDictList"></div>
+    <button class="btn btn-ghost panel-clear" id="personalDictClearBtn" type="button">مسح القاموس الشخصي</button>
   </div>
 
   <!-- ===== Output ===== -->
@@ -90,10 +116,12 @@
     <div class="suggest-pop" id="suggestPop" hidden>
       <div class="suggest-pop-word" id="suggestWord"></div>
       <div class="suggest-chips" id="suggestChips"></div>
+      <button class="chip chip-ignore" id="ignoreWordBtn" type="button">تجاهل الكلمة</button>
       <button class="suggest-close" id="suggestClose" type="button" aria-label="إغلاق">✕</button>
     </div>
 
     <div class="output-actions">
+      <button class="btn btn-ghost" id="speakBtn" type="button" hidden>🔊 نطق</button>
       <button class="btn btn-ghost" id="copyBtn" type="button">نسخ النتيجة</button>
       <button class="btn btn-ghost" id="downloadBtn" type="button">تنزيل txt</button>
     </div>

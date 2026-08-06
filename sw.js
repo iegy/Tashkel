@@ -1,4 +1,4 @@
-const CACHE_NAME = "arabimo-v1";
+const CACHE_NAME = "arabimo-v2";
 const CORE_ASSETS = [
   "./",
   "./index.html",
