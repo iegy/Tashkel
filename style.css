@@ -362,6 +362,7 @@ body{
   gap:10px;
   flex-wrap:wrap;
 }
+.suggest-pop[hidden]{ display:none; }
 .suggest-pop-word{
   font-weight:700;
   color: var(--vermillion);

@@ -276,19 +276,52 @@
      7) Spellcheck engine
      ============================================================ */
   const CLITIC_PREFIXES = ["وبال", "فبال", "كبال", "بال", "كال", "فال", "وال", "ولل", "فلل", "لل", "ال", "و", "ف", "ب", "ك", "ل", "س"];
+  // Attached object/possessive pronoun suffixes — extremely common in
+  // Arabic (كتابه، بيتها، سيارتنا...). Longest first so greedy matching
+  // doesn't strip "ه" out of "هما" etc.
+  const PRONOUN_SUFFIXES = ["هما", "كما", "كن", "هن", "هم", "كم", "نا", "ها", "ه", "ك", "ي"];
+
+  function stripPrefix(w) {
+    for (const p of CLITIC_PREFIXES) {
+      if (w.startsWith(p) && w.length - p.length >= 2) return w.slice(p.length);
+    }
+    return null;
+  }
+  function stripSuffix(w) {
+    for (const s of PRONOUN_SUFFIXES) {
+      if (w.endsWith(s) && w.length - s.length >= 2) return w.slice(0, -s.length);
+    }
+    return null;
+  }
+  // ة becomes ت when a pronoun suffix attaches (مدرسة -> مدرستنا),
+  // so after stripping a suffix we also try swapping a trailing ت back to ة.
+  function taaMarbutaVariant(w) {
+    if (w.endsWith("ت") && w.length >= 2) return w.slice(0, -1) + "ة";
+    return null;
+  }
 
   function isArabicWordValid(bare) {
     if (bare.length < 2) return true; // single letters: not worth flagging
     if (state.spell.correct(bare)) return true;
-    for (const p of CLITIC_PREFIXES) {
-      if (bare.startsWith(p) && bare.length - p.length >= 2) {
-        if (state.spell.correct(bare.slice(p.length))) return true;
-      }
+
+    const candidates = new Set();
+    const p = stripPrefix(bare);
+    const s = stripSuffix(bare);
+    if (p) candidates.add(p);
+    if (s) candidates.add(s);
+    if (p) { const ps = stripSuffix(p); if (ps) candidates.add(ps); }
+    if (s) { const sp = stripPrefix(s); if (sp) candidates.add(sp); }
+    for (const c of [...candidates]) {
+      const t = taaMarbutaVariant(c);
+      if (t) candidates.add(t);
+    }
+    for (const c of candidates) {
+      if (state.spell.correct(c)) return true;
     }
     return false;
   }
 
-  let misspelledRegistry = []; // index -> {bare, suggestions}
+  let misspelledRegistry = []; // index -> { bare, suggestions: string[] | null }
 
   function runSpellcheck() {
     const text = els.inputText.value;
@@ -299,6 +332,10 @@
     let total = 0;
     let html = "";
 
+    // NOTE: we deliberately do NOT compute spell.suggest() here.
+    // Hunspell-style suggestion search is expensive, and calling it for
+    // every flagged word up front can freeze the page on longer texts.
+    // Suggestions are computed lazily, once, when a word is tapped.
     parts.forEach((part, i) => {
       if (!part) return;
       if (!isArabicToken(part, i)) {
@@ -312,10 +349,8 @@
         html += escapeHtml(part);
       } else {
         wrong++;
-        let suggestions = [];
-        try { suggestions = state.spell.suggest(bare).slice(0, 5); } catch (e) { /* noop */ }
         const idx = misspelledRegistry.length;
-        misspelledRegistry.push({ bare, suggestions });
+        misspelledRegistry.push({ bare, suggestions: null });
         html += `<span class="misspelled" data-idx="${idx}">${escapeHtml(part)}</span>`;
       }
     });
@@ -338,6 +373,30 @@
     document.querySelectorAll(".misspelled.is-open").forEach((s) => s.classList.remove("is-open"));
     span.classList.add("is-open");
     els.suggestWord.textContent = span.textContent;
+    els.suggestChips.innerHTML = "";
+
+    // compute suggestions lazily, on first tap only, then cache them
+    if (entry.suggestions === null) {
+      els.suggestChips.innerHTML = '<span class="card-label">…جاري البحث عن اقتراحات</span>';
+      els.suggestPop.hidden = false;
+      setTimeout(() => {
+        try {
+          entry.suggestions = state.spell.suggest(entry.bare).slice(0, 5);
+        } catch (e) {
+          entry.suggestions = [];
+        }
+        // only redraw if this word's popover is still the one open
+        if (Number(els.suggestPop.dataset.forIdx) === idx || els.suggestPop.dataset.forIdx === undefined) {
+          renderSuggestChips(entry, span, idx);
+        }
+      }, 10);
+      els.suggestPop.dataset.forIdx = String(idx);
+      return;
+    }
+    renderSuggestChips(entry, span, idx);
+  }
+
+  function renderSuggestChips(entry, span, idx) {
     els.suggestChips.innerHTML = "";
     if (entry.suggestions.length === 0) {
       const p = document.createElement("span");
@@ -376,8 +435,22 @@
      8) Run button
      ============================================================ */
   els.runBtn.addEventListener("click", () => {
-    if (mode === "tashkeel") runTashkeel();
-    else runSpellcheck();
+    els.runBtn.disabled = true;
+    const originalLabel = els.runBtnLabel.textContent;
+    els.runBtnLabel.textContent = "…جاري المعالجة";
+    // yield one frame so the "processing" label actually paints before
+    // the (synchronous) tokenizing/checking loop runs
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        try {
+          if (mode === "tashkeel") runTashkeel();
+          else runSpellcheck();
+        } finally {
+          els.runBtnLabel.textContent = originalLabel;
+          els.runBtn.disabled = false;
+        }
+      }, 0);
+    });
   });
 
   /* ============================================================
