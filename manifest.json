@@ -1,0 +1,19 @@
+{
+  "name": "عربي مو — تشكيل وتصحيح إملائي",
+  "short_name": "عربي مو",
+  "description": "أداة مجانية تعمل بالكامل على جهازك لتشكيل النصوص العربية وتصحيح الإملاء.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1C1B2E",
+  "theme_color": "#1C1B2E",
+  "dir": "rtl",
+  "lang": "ar",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
