@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>تشكيل مو — أوف لاين بالكامل</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Aref+Ruqaa:wght@400;700&family=Amiri:ital,wght@0,400;0,700;1,400&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1C1810; --parchment:#EDE6D6; --parchment-deep:#E3D9BF;
+    --vermilion:#963530; --vermilion-bright:#B8433C; --gold:#A9834F;
+    --teal:#1A2E35; --line: rgba(28,24,16,0.14);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background: var(--parchment);
+    background-image:
+      radial-gradient(circle at 15% 8%, rgba(169,131,79,0.10), transparent 40%),
+      radial-gradient(circle at 85% 92%, rgba(150,53,48,0.06), transparent 45%);
+    color: var(--ink); font-family:'Tajawal', sans-serif;
+    min-height:100vh; display:flex; flex-direction:column; align-items:center;
+    padding: 32px 16px 64px;
+  }
+  header{ text-align:center; max-width:640px; margin-bottom: 18px; }
+  .mark{
+    width:46px;height:46px;margin:0 auto 14px; display:flex;align-items:center;justify-content:center;
+    font-family:'Aref Ruqaa', serif; font-size:30px;color:var(--vermilion);
+    border:1.5px solid var(--gold); border-radius:50%; background: var(--parchment);
+  }
+  h1{
+    font-family:'Aref Ruqaa', serif; font-weight:700; font-size:clamp(36px, 7vw, 54px);
+    margin: 0 0 6px; letter-spacing: 0.5px;
+  }
+  .tagline{ font-size:14px; color: rgba(28,24,16,0.62); margin:0; }
+  .badge{
+    display:inline-block; margin-top:10px; font-size:11px; color:var(--teal);
+    border:1px solid var(--teal); border-radius:999px; padding:3px 12px; letter-spacing:0.5px;
+  }
+  .divider{ width:180px; height:1px; margin: 20px auto 0; background: linear-gradient(to left, transparent, var(--gold), transparent); position:relative; }
+  .divider::after{ content:"۞"; position:absolute; top:50%; left:50%; transform:translate(50%,-52%); background:var(--parchment); color:var(--gold); padding:0 10px; font-size:14px; }
+
+  main{ width:100%; max-width: 720px; margin-top: 30px; }
+  .folio{
+    background: var(--parchment); border:1px solid var(--line); border-top: 3px solid var(--gold);
+    border-radius: 3px; box-shadow: 0 1px 2px rgba(28,24,16,0.06), 0 12px 28px -18px rgba(28,24,16,0.35);
+    padding: 22px; position:relative;
+  }
+
+  #loadingOverlay{
+    position:absolute; inset:0; background: rgba(237,230,214,0.97);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    border-radius:3px; gap:14px; padding:20px; text-align:center; z-index:5;
+  }
+  .spinner{
+    width:34px;height:34px; border-radius:50%;
+    border:3px solid rgba(28,24,16,0.15); border-top-color: var(--vermilion);
+    animation: spin 0.9s linear infinite;
+  }
+  @keyframes spin{ to{ transform: rotate(360deg); } }
+  #loadingText{ font-size:14px; color: rgba(28,24,16,0.7); }
+  #loadingSub{ font-size:12px; color: rgba(28,24,16,0.45); max-width:320px; }
+  @media (prefers-reduced-motion: reduce){ .spinner{ animation: none; border-top-color: var(--vermilion); } }
+
+  textarea{
+    width:100%; min-height: 150px; resize: vertical; font-family:'Amiri', serif;
+    font-size: 21px; line-height: 1.9; color: var(--ink); background: transparent;
+    border: none; outline: none; padding: 4px 2px;
+  }
+  textarea::placeholder{ color: rgba(28,24,16,0.38); }
+
+  .controls{
+    display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;
+    margin-top: 16px; padding-top: 16px; border-top: 1px dashed var(--line);
+  }
+  .btn-group{ display:flex; gap:8px; flex-wrap:wrap; }
+  button{
+    font-family:'Tajawal', sans-serif; font-weight:700; font-size:14px;
+    border:none; padding: 11px 22px; border-radius: 3px; cursor:pointer;
+    transition: background .18s ease, transform .05s ease;
+  }
+  button.primary{ color: var(--parchment); background: var(--vermilion); }
+  button.primary:hover{ background: var(--vermilion-bright); }
+  button.secondary{ color: var(--ink); background: transparent; border:1px solid var(--line); }
+  button.secondary:hover{ border-color: var(--gold); }
+  button:active{ transform: translateY(1px); }
+  button:disabled{ opacity:0.5; cursor:default; }
+
+  .status{ font-size:13px; color: rgba(28,24,16,0.55); margin-top:14px; min-height:18px; }
+  .status.error{ color: var(--vermilion); }
+
+  .spell-issues{ margin-top:16px; display:none; }
+  .spell-issues.show{ display:block; }
+  .spell-issue{
+    display:inline-flex; align-items:center; gap:6px; background: var(--parchment-deep);
+    border:1px solid var(--line); border-radius:999px; padding:5px 6px 5px 12px;
+    font-size:13px; margin:4px 6px 4px 0;
+  }
+  .spell-issue .orig{ text-decoration: underline wavy var(--vermilion); text-underline-offset:3px; }
+  .spell-issue select{
+    font-family:'Tajawal', sans-serif; font-size:12px; border:none; background:var(--parchment);
+    border-radius: 999px; padding:3px 8px; cursor:pointer;
+  }
+
+  .result-wrap{ margin-top: 26px; display:none; }
+  .result-wrap.show{ display:block; }
+  .result-label{ font-size:12px; color: var(--gold); letter-spacing:1px; margin-bottom:10px; display:flex; align-items:center; gap:8px; }
+  .result-label::before, .result-label::after{ content:""; height:1px; flex:1; background: var(--line); }
+  .result{ font-family:'Amiri', serif; font-size: 23px; line-height: 2.3; color: var(--ink); white-space: pre-wrap; padding: 6px 2px; }
+  .result .haraka{ color: var(--vermilion); }
+  .result-actions{ margin-top:16px; display:flex; gap:10px; }
+  .icon-btn{ font-family:'Tajawal', sans-serif; font-size:13px; color: var(--ink); background: transparent; border:1px solid var(--line); padding: 7px 16px; border-radius: 3px; cursor:pointer; }
+  .icon-btn:hover{ border-color: var(--gold); }
+
+  footer{ margin-top: 40px; font-size:12px; color: rgba(28,24,16,0.45); text-align:center; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="mark">ش</div>
+  <h1>تشكيل مو</h1>
+  <p class="tagline">تشكيل تلقائي وتصحيح إملائي للنص العربي، يعمل بالكامل داخل متصفحك</p>
+  <span class="badge" id="offlineBadge">⚙ يعمل محليًا بدون سيرفر</span>
+  <div class="divider"></div>
+</header>
+
+<main>
+  <div class="folio">
+
+    <div id="loadingOverlay">
+      <div class="spinner"></div>
+      <div id="loadingText">جاري تحميل الأداة لأول مرة…</div>
+      <div id="loadingSub">تحميل لمرة واحدة بس (~25 ميجابايت) — بعدها هتشتغل الأداة من غير إنترنت خالص.</div>
+    </div>
+
+    <textarea id="inputText" placeholder="الصق أو اكتب نصك العربي هنا بدون تشكيل…" dir="rtl"></textarea>
+
+    <div class="controls">
+      <div class="btn-group">
+        <button class="secondary" id="spellBtn" disabled>تدقيق إملائي</button>
+        <button class="primary" id="runBtn" disabled>شكّل النص</button>
+      </div>
+      <button class="secondary" id="clearBtn">نص جديد</button>
+    </div>
+
+    <div class="status" id="status"></div>
+
+    <div class="spell-issues" id="spellIssues">
+      <div class="result-label">كلمات محتمل كتابتها غلط (اختر البديل لو حبيت)</div>
+      <div id="spellIssuesList"></div>
+    </div>
+
+    <div class="result-wrap" id="resultWrap">
+      <div class="result-label">النص بعد التشكيل</div>
+      <div class="result" id="resultText"></div>
+      <div class="result-actions">
+        <button class="icon-btn" id="copyBtn">نسخ النص</button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  تشكيل مو — يعمل بالكامل في متصفحك، النص متسيبش جهازك أبدًا
+</footer>
+
+<script src="./ort.wasm.min.js"></script>
+<script src="./nspell.bundle.js"></script>
+<script src="./app.js"></script>
+<script>
+  const inputText   = document.getElementById('inputText');
+  const runBtn      = document.getElementById('runBtn');
+  const spellBtn    = document.getElementById('spellBtn');
+  const clearBtn    = document.getElementById('clearBtn');
+  const statusEl    = document.getElementById('status');
+  const resultWrap  = document.getElementById('resultWrap');
+  const resultText  = document.getElementById('resultText');
+  const copyBtn     = document.getElementById('copyBtn');
+  const loadingOverlay = document.getElementById('loadingOverlay');
+  const loadingText = document.getElementById('loadingText');
+  const spellIssuesWrap = document.getElementById('spellIssues');
+  const spellIssuesList = document.getElementById('spellIssuesList');
+
+  const HARAKAT_RANGE = /[\u064B-\u065F\u0670]/;
+
+  function renderWithHarakat(text){
+    let html = '';
+    for (const ch of text){
+      html += HARAKAT_RANGE.test(ch) ? `<span class="haraka">${ch}</span>` : ch;
+    }
+    return html;
+  }
+
+  function setStatus(msg, isError=false){
+    statusEl.textContent = msg || '';
+    statusEl.classList.toggle('error', !!isError);
+  }
+
+  // تسجيل Service Worker للتخزين المؤقت (يخلي الأداة تشتغل بدون إنترنت خالص من الزيارة الثانية)
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  }
+
+  (async () => {
+    try{
+      await Promise.all([
+        window.TashkeelMo.loadTashkeelAssets((msg) => { loadingText.textContent = msg; }),
+        window.TashkeelMo.loadSpellAssets((msg) => { loadingText.textContent = msg; }),
+      ]);
+      loadingOverlay.style.display = 'none';
+      runBtn.disabled = false;
+      spellBtn.disabled = false;
+      setStatus('جاهزة.');
+    } catch(err){
+      loadingText.textContent = 'حصل خطأ أثناء تحميل الأداة';
+      document.getElementById('loadingSub').textContent = String(err?.message || err);
+    }
+  })();
+
+  runBtn.addEventListener('click', async () => {
+    const text = inputText.value.trim();
+    if (!text){ setStatus('اكتب نصًا أولًا.', true); return; }
+
+    runBtn.disabled = true;
+    setStatus('جاري التشكيل…');
+    resultWrap.classList.remove('show');
+
+    try{
+      const result = await window.TashkeelMo.runTashkeelInference(text);
+      resultText.innerHTML = renderWithHarakat(result);
+      resultWrap.classList.add('show');
+      setStatus('تم.');
+    } catch(err){
+      setStatus('حصل خطأ أثناء التشكيل: ' + (err?.message || err), true);
+    } finally{
+      runBtn.disabled = false;
+    }
+  });
+
+  spellBtn.addEventListener('click', () => {
+    const text = inputText.value;
+    if (!text.trim()){ setStatus('اكتب نصًا أولًا.', true); return; }
+
+    const issues = window.TashkeelMo.checkSpelling(text);
+    spellIssuesList.innerHTML = '';
+
+    if (issues.length === 0){
+      spellIssuesWrap.classList.remove('show');
+      setStatus('مفيش أخطاء إملائية واضحة.');
+      return;
+    }
+
+    issues.forEach((issue) => {
+      const chip = document.createElement('span');
+      chip.className = 'spell-issue';
+
+      const orig = document.createElement('span');
+      orig.className = 'orig';
+      orig.textContent = issue.word;
+      chip.appendChild(orig);
+
+      const select = document.createElement('select');
+      const emptyOpt = document.createElement('option');
+      emptyOpt.textContent = '↳ اختر بديل';
+      emptyOpt.value = '';
+      select.appendChild(emptyOpt);
+      issue.suggestions.forEach((s) => {
+        const opt = document.createElement('option');
+        opt.textContent = s;
+        opt.value = s;
+        select.appendChild(opt);
+      });
+      select.addEventListener('change', () => {
+        if (!select.value) return;
+        inputText.value = inputText.value.replace(issue.word, select.value);
+        chip.style.opacity = '0.4';
+        select.disabled = true;
+      });
+      chip.appendChild(select);
+      spellIssuesList.appendChild(chip);
+    });
+
+    spellIssuesWrap.classList.add('show');
+    setStatus(`لقيت ${issues.length} كلمة محتملة الخطأ.`);
+  });
+
+  copyBtn.addEventListener('click', () => {
+    navigator.clipboard.writeText(resultText.innerText).then(() => setStatus('اتنسخ النص.'));
+  });
+
+  clearBtn.addEventListener('click', () => {
+    inputText.value = '';
+    resultWrap.classList.remove('show');
+    spellIssuesWrap.classList.remove('show');
+    setStatus('');
+    inputText.focus();
+  });
+</script>
+</body>
+</html>
