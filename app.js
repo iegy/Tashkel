@@ -79,7 +79,7 @@ async function copyToClipboard(text, btn) {
    1) التشكيل التلقائي — عبر Gradio Space على Hugging Face
    ========================================================= */
 
-const TASHKEEL_SPACE = "MohamedRashad/arabic-auto-tashkeel";
+const TASHKEEL_SPACE = "egyup/tashkeel";
 
 let clientPromise = null;
 let apiInfoPromise = null;
